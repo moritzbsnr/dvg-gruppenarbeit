@@ -1,6 +1,6 @@
-import grpc
 import article_condition_serviceproto_pb2 as pb2
 import article_condition_serviceproto_pb2_grpc as pb2_grpc
+import grpc
 
 
 class ArticleConditionService(pb2_grpc.ArticleConditionServiceServicer):

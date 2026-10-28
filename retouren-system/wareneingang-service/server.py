@@ -4,10 +4,10 @@ from concurrent import futures
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "generated"))
 
-import grpc
-from grpc_reflection.v1alpha import reflection
 import article_condition_serviceproto_pb2 as pb2
 import article_condition_serviceproto_pb2_grpc as pb2_grpc
+import grpc
+from grpc_reflection.v1alpha import reflection
 from service_impl import ArticleConditionService
 
 
