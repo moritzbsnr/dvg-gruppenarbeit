@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+// ---------------------------------------------------------------------------
+// ArtikelzustandsPrüfservice
+//
+// Interner gRPC-Service, der den im Warehouse-Management-System (WMS)
+// erfassten Zustand eines retournierten Artikels bewertet und eine
+// automatisierte Annahme-/Ablehnungsempfehlung liefert. Grenzfälle werden
+// als MANUAL_REVIEW markiert und im Workflow (Sprint 4) manuell
+// entschieden.
+// ---------------------------------------------------------------------------
+service ArticleConditionService {
+
+  // Einzelprüfung: Zustand eines Artikels synchron bewerten.
+  rpc CheckCondition(ConditionCheckRequest) returns (ConditionCheckResponse);
+
+  // Stapelprüfung: mehrere Artikel eines Wareneingangs am Stück bewerten
+  // (z. B. Sammelretoure mit mehreren Positionen).
+  rpc CheckConditionBatch(ConditionCheckBatchRequest) returns (ConditionCheckBatchResponse);
+
+  // Ergebnis einer bereits durchgeführten Prüfung erneut abrufen
+  // (z. B. für Nachbearbeitung oder Audit-Zwecke).
+  rpc GetCheckResult(GetCheckResultRequest) returns (ConditionCheckResponse);
+}
+
+// Vom Lagerpersonal am WMS-Scanner erfasster Rohbefund.
+message ConditionCheckRequest {
+  string return_id = 1;          // z. B. "RET-2026-00457"
+  string sku = 2;                // z. B. "SH-BLZ-042-M"
+  ObservedCondition observed_condition = 3;
+  repeated string image_urls = 4; // Fotos des Artikels, vom Scanner hochgeladen
+  bool tags_present = 5;         // Etiketten/Hologramm noch vorhanden
+  bool original_packaging = 6;   // Originalverpackung vorhanden
+  string inspector_note = 7;     // Freitextnotiz der Lagermitarbeiter:in
+  string inspected_at = 8;       // ISO-8601-Zeitstempel der Prüfung
+}
+
+message ConditionCheckBatchRequest {
+  repeated ConditionCheckRequest items = 1;
+}
+
+message ConditionCheckBatchResponse {
+  repeated ConditionCheckResponse results = 1;
+}
+
+message GetCheckResultRequest {
+  string return_id = 1;
+  string sku = 2;
+}
+
+// Automatisierte Bewertung inkl. Empfehlung für den Workflow.
+message ConditionCheckResponse {
+  string return_id = 1;
+  string sku = 2;
+  Decision decision = 3;
+  double confidence_score = 4;   // 0.0–1.0, Sicherheit der Empfehlung
+  string reason = 5;             // kurze, nachvollziehbare Begründung
+  bool requires_manual_review = 6;
+  string checked_at = 7;         // ISO-8601-Zeitstempel der Bewertung
+}
+
+// Vom Lagerpersonal beobachteter Rohzustand des Artikels.
+enum ObservedCondition {
+  OBSERVED_CONDITION_UNSPECIFIED = 0;
+  AS_NEW = 1;          // neuwertig, ungetragen
+  MINOR_WEAR = 2;       // leichte Gebrauchsspuren
+  VISIBLY_WORN = 3;      // deutlich getragen
+  DAMAGED = 4;          // beschädigt (Riss, Fleck, defekt)
+  MISSING_TAGS = 5;      // Etiketten/Hologramm fehlen
+  MISSING_PARTS = 6;     // Zubehör/Teile fehlen
+}
+
+// Ergebnis der automatisierten Zustandsprüfung.
+enum Decision {
+  DECISION_UNSPECIFIED = 0;
+  ACCEPT = 1;           // Rücknahme, Wiedereinlagerung
+  REJECT = 2;           // Rücknahme abgelehnt, Rückversand an Kund:in
+  MANUAL_REVIEW = 3;    // Grenzfall, Eskalation an Fachkraft
+}
